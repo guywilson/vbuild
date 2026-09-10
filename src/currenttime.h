@@ -1,29 +1,24 @@
+#pragma once
+
+#include <string>
+
 #include <time.h>
 
-#ifndef _INCL_CURRENTTIME
-#define _INCL_CURRENTTIME
+class CurrentTime {
+	private:
+		struct tm * localTime;
 
-class CurrentTime
-{
-private:
-	struct tm *		localTime;
-	char			szTimeStr[20];
+		void updateTime();
 
-public:
-	CurrentTime();
+	public:
+		CurrentTime();
 
-	void			updateTime();
-	void			updateTime(time_t * t);
+		static std::string getTimeStamp();
 
-	char *			getTimeStamp();
-
-	int				getYear();
-	int				getMonth();
-	int				getDay();
-
-	int				getHour();
-	int				getMinute();
-	int				getSecond();
+		int	getYear();
+		int	getMonth();
+		int	getDay();
+		int	getHour();
+		int	getMinute();
+		int	getSecond();
 };
-
-#endif

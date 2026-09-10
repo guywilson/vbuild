@@ -1,156 +1,204 @@
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <exception>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "cmdarg.h"
 #include "currenttime.h"
 
-void printUsage()
-{
-    printf("Usage:\n\n");
-    printf("vbuild <options>\n");
-    printf("\t-incfile [incremental version file]\n");
-    printf("\t-template [template version source code file]\n");
-    printf("\t-out [version source code output]\n");
-    printf("\t-major [major version]\n");
-    printf("\t-minor [minor version]\n\n");
+#define VBUILD_VERSION              "v1.0.0"
+
+struct _version {
+    uint32_t majorVersion;
+    uint32_t minorVersion;
+    uint32_t incrementalVersion;
+};
+
+typedef struct _version version_t;
+
+void printUsage() {
+    std::cout << "Usage:" << std::endl << std::endl;
+    std::cout << "vbuild <options>" << std::endl;
+    std::cout << "\t-v - Print version number and exit" << std::endl;
+    std::cout << "\t-i [incremental version file]" << std::endl;
+    std::cout << "\t-t [template version source code file]" << std::endl;
+    std::cout << "\t-o [version source code output]" << std::endl;
+    std::cout << "\t-major [major version]" << std::endl;
+    std::cout << "\t-minor [minor version]" << std::endl;
+    std::cout << "\t--pre-increment - Increment the version before writing the output file, default is post increment" << std::endl << std::endl;
 }
 
-int main(int argc, char * argv[])
-{
-    FILE *		fptrRead;
-    FILE *      fptrWrite;
-    char		szIncrementalVersion[8];
-    char        szVersionStr[64];
-    char *      pszTimestamp;
-    char *      pszIncrementalVersionFileName;
-    char *      pszVersionCodeFileName;
-    char *      pszTemplateFileName;
-    char *      pszTemplateBuffer;
-    int			i = 0;
-    int         majorVersion = 0;
-    int         minorVersion = 0;
-    int         incrementalVersion;
-    int         filelength;
+static uint32_t readIncrementalVersion(const std::string & filename) {
+    FILE * fp = fopen(filename.c_str(), "rt");
 
-    if (argc > 5) {
-		for (i = 1;i < argc;i++) {
-			if (argv[i][0] == '-') {
-				if (strncmp(&argv[i][1], "incfile", 7) == 0) {
-                    pszIncrementalVersionFileName = strdup(&argv[++i][0]);
-				}
-				else if (strncmp(&argv[i][1], "out", 3) == 0) {
-                    pszVersionCodeFileName = strdup(&argv[++i][0]);
-				}
-                else if (strncmp(&argv[i][1], "major", 5) == 0) {
-                    majorVersion = atoi(&argv[++i][0]);
-                }
-                else if (strncmp(&argv[i][1], "minor", 5) == 0) {
-                    minorVersion = atoi(&argv[++i][0]);
-                }
-                else if (strncmp(&argv[i][1], "template", 8) == 0) {
-                    pszTemplateFileName = strdup(&argv[++i][0]);
-                }
-                else {
-                    printf("Unknown command line option %s\n\n", &argv[++i][0]);
-                    printUsage();
-                    return -1;
-                }
-			}
-		}
-	}
-	else {
-        printUsage();
-		return -1;
-	}
-
-    fptrRead = fopen(pszIncrementalVersionFileName, "rt");
-
-    if (fptrRead == NULL) {
-        printf("Failed to open incremental version file %s for reading\n\n", pszIncrementalVersionFileName);
-        return -1;
+    if (fp == NULL) {
+        std::cout << "Failed to open incremental version file '" << filename << "' for reading" << std::endl << std::endl;
+        throw std::exception();
     }
 
-    i = 0;
+    int i = 0;
+    std::string version;
 
-    while (!feof(fptrRead)) {
-        szIncrementalVersion[i++] = fgetc(fptrRead);
-    }
-    szIncrementalVersion[i] = 0;
-
-    fclose(fptrRead);
-
-    fptrWrite = fopen(pszIncrementalVersionFileName, "wt");
-
-    if (fptrWrite == NULL) {
-        printf("Failed to open incremental version file %s for writing\n\n", pszIncrementalVersionFileName);
-        return -1;
+    while (!feof(fp)) {
+        version[i++] = fgetc(fp);
     }
 
-    incrementalVersion = atoi(szIncrementalVersion);
-    incrementalVersion++;
+    fclose(fp);
 
-    fprintf(fptrWrite, "%03d", incrementalVersion);
-    fclose(fptrWrite);
+    return (uint32_t)strtoul(version.c_str(), NULL, 10);
+}
 
-    sprintf(
-        szVersionStr, 
-        "%d.%d.%03d", 
-        majorVersion, 
-        minorVersion, 
-        incrementalVersion);
+static void writeIncrementalVersion(const std::string & filename, uint32_t version) {
+    FILE * fp = fopen(filename.c_str(), "wt");
 
-    fptrRead = fopen(pszTemplateFileName, "rt");
-
-    if (fptrRead == NULL) {
-        printf("Failed to open template code file %s\n\n", pszTemplateFileName);
-        return -1;
+    if (fp == NULL) {
+        std::cout << "Failed to open incremental version file '" << filename << "' for writing" << std::endl << std::endl;
+        throw std::exception();
     }
 
-    fseek(fptrRead, 0L, SEEK_END);
-    filelength = ftell(fptrRead);
-    rewind(fptrRead);
+    fprintf(fp, "%03ld", (unsigned long)version);
 
-    pszTemplateBuffer = (char *)malloc(filelength + 1);
+    fclose(fp);
+}
 
-    if (pszTemplateBuffer == NULL) {
-        printf("Failed to allocate memory for template file %s\n", pszTemplateFileName);
-        return -1;
+static void writeVersionSourceFile(const std::string & versionTemplateFile, const std::string & versionSourceFile, const version_t & v) {
+    FILE * fpTemplate = fopen(versionTemplateFile.c_str(), "rt");
+
+    if (fpTemplate == NULL) {
+        std::cout << "Failed to open template file '" << versionTemplateFile << "'" << std::endl << std::endl;
+        throw std::exception();
     }
 
-    fread(pszTemplateBuffer, 1, filelength, fptrRead);
+    fseek(fpTemplate, 0L, SEEK_END);
+    long filelength = ftell(fpTemplate);
+    rewind(fpTemplate);
 
-    fclose(fptrRead);
+    char * templateBuffer = (char *)malloc(filelength + 1);
 
-    fptrWrite = fopen(pszVersionCodeFileName, "wt");
-
-    if (fptrWrite == NULL) {
-        printf("Failed to open code file %s\n\n", pszVersionCodeFileName);
-        return -1;
+    if (templateBuffer == NULL) {
+        std::cout << "Failed to allocate memory for template file '" << versionTemplateFile << "'" << std::endl << std::endl;
+        throw std::exception();
     }
 
-    CurrentTime time;
-    pszTimestamp = time.getTimeStamp();
+    fread(templateBuffer, 1, filelength, fpTemplate);
 
-    i = 0;
+    fclose(fpTemplate);
 
-    while (pszTemplateBuffer[i] != 0) {
-        if (strncmp(&pszTemplateBuffer[i], "<BUILD_DATE>", 12) == 0) {
-            fwrite(pszTimestamp, 1, strlen(pszTimestamp), fptrWrite);
+    FILE * fpSource = fopen(versionSourceFile.c_str(), "wt");
+
+    if (fpSource == NULL) {
+        std::cout << "Failed to open source file '" << versionSourceFile << "'" << std::endl << std::endl;
+        throw std::exception();
+    }
+
+    std::string timestamp = CurrentTime::getTimeStamp();
+
+    char versionString[256];
+
+    snprintf(
+        versionString, 
+        256, 
+        "%u.%u.%03u", 
+        v.majorVersion, 
+        v.minorVersion, 
+        v.incrementalVersion);
+
+    int i = 0;
+
+    while (templateBuffer[i] != 0) {
+        if (strncmp(&templateBuffer[i], "<BUILD_DATE>", 12) == 0) {
+            fwrite(timestamp.c_str(), 1, timestamp.length(), fpSource);
             i += 12;
         }
-        else if (strncmp(&pszTemplateBuffer[i], "<BUILD_VERSION>", 15) == 0) {
-            fwrite(szVersionStr, 1, strlen(szVersionStr), fptrWrite);
+        else if (strncmp(&templateBuffer[i], "<BUILD_VERSION>", 15) == 0) {
+            fwrite(versionString, 1, strlen(versionString), fpSource);
             i += 15;
         }
         else {
-            fputc((int)pszTemplateBuffer[i], fptrWrite);
+            fputc((int)templateBuffer[i], fpSource);
             i++;
         }
     }
 
-    fclose(fptrWrite);
+    fclose(fpSource);
 
-    free(pszTemplateBuffer);
+    free(templateBuffer);
+}
+
+int main(int argc, char * argv[]) {
+    std::string incrementalVersionFile;
+    std::string versionTemplateFile;
+    std::string versionSourceFile;
+
+    version_t v;
+    bool isPreIncrement = false;
+
+    CmdArg cmd(argc, argv);
+
+    while (cmd.hasMoreArgs()) {
+        std::string arg = cmd.nextArg();
+
+        if (arg == "-i") {
+            incrementalVersionFile = cmd.nextArg();
+        }
+        else if (arg == "-o") {
+            versionSourceFile = cmd.nextArg();
+        }
+        else if (arg == "-major") {
+            v.majorVersion = strtoul(cmd.nextArg().c_str(), NULL, 10);
+        }
+        else if (arg == "-minor") {
+            v.minorVersion = strtoul(cmd.nextArg().c_str(), NULL, 10);
+        }
+        else if (arg == "-t") {
+            versionTemplateFile = cmd.nextArg();
+        }
+        else if (arg == "-v") {
+            std::cout << VBUILD_VERSION << std::endl << std::endl;
+            return 0;
+        }
+        else if (arg == "--pre-increment") {
+            isPreIncrement = true;
+        }
+        else {
+            std::cout << "Unknown command line option '" << arg << "'" << std::endl << std::endl;
+            printUsage();
+            return -1;
+        }
+    }
+
+    if (incrementalVersionFile.length() == 0) {
+        std::cout << "Incremental version file must be specified with the -i option." << std::endl;
+        printUsage();
+        return -1;
+    }
+    if (versionSourceFile.length() == 0) {
+        std::cout << "Output version source file must be specified with the -o option." << std::endl;
+        printUsage();
+        return -1;
+    }
+    if (versionTemplateFile.length() == 0) {
+        std::cout << "Template version file must be specified with the -t option." << std::endl;
+        printUsage();
+        return -1;
+    }
+
+    v.incrementalVersion = readIncrementalVersion(incrementalVersionFile);
+
+    if (isPreIncrement) {
+        v.incrementalVersion++;
+        writeVersionSourceFile(versionTemplateFile, versionSourceFile, v);
+    }
+    else {
+        writeVersionSourceFile(versionTemplateFile, versionSourceFile, v);
+        v.incrementalVersion++;
+    }
+
+    writeIncrementalVersion(incrementalVersionFile, v.incrementalVersion);
 
     return 0;
 }
