@@ -1,3 +1,24 @@
+# BUILDING FROM SOURCE
+
+The source build requires Autoconf, a C compiler, a C++ compiler with C++20 support, GNU Make, and Pandoc.
+
+From the project directory, run:
+
+```sh
+./configure
+make
+```
+
+This creates the `makefile`, builds `vbuild`, and generates the `vbuild.1` manual page. To regenerate the version source file before building, run `make version` first.
+
+To install the program and manual page under `/usr/local`, run:
+
+```sh
+make install
+```
+
+Use `make install DESTDIR=/path/to/staging` to install into a staging directory.
+
 # NAME
 
 vbuild - version builder
