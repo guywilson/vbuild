@@ -1,3 +1,6 @@
+MAJOR_VERSION=1
+MINOR_VERSION=0
+
 # Directories
 SOURCE = src
 BUILD = build
@@ -11,6 +14,7 @@ TARGET = vbuild
 MANTARGET = $(TARGET).1
 
 # Tools
+VB=vbuild
 C = gcc
 CPP = g++
 LINKER = g++
@@ -83,6 +87,9 @@ $(MANTARGET): $(MANSOURCE)
 $(DEP)/%.d: ;
 
 -include $(DEPFILES)
+
+version:
+	$(VB) -i vbuild.ver -t version.c.template -o $(SOURCE)/version.c -major $(MAJOR_VERSION) -minor $(MINOR_VERSION)
 
 install: $(TARGET)
 	cp $(TARGET) /usr/local/bin

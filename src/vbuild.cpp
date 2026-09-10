@@ -10,8 +10,7 @@
 
 #include "cmdarg.h"
 #include "currenttime.h"
-
-#define VBUILD_VERSION              "v1.0.0"
+#include "version.h"
 
 struct _version {
     uint32_t majorVersion;
@@ -176,7 +175,7 @@ int main(int argc, char * argv[]) {
             versionTemplateFile = cmd.nextArg();
         }
         else if (arg == "-v") {
-            std::cout << VBUILD_VERSION << std::endl << std::endl;
+            std::cout << "VBUILD 'v" << getVersion() << "' - built [" << getBuildDate() << "]" << std::endl << std::endl;
             return 0;
         }
         else if (arg == "-h") {
