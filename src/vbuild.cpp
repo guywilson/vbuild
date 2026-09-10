@@ -2,6 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <exception>
+#include <cstdint>
 
 #include <stdio.h>
 #include <stdlib.h>
