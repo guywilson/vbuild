@@ -102,9 +102,18 @@ static void writeVersionSourceFile(const std::string & versionTemplateFile, cons
         throw std::exception();
     }
 
-    fread(templateBuffer, 1, filelength, fpTemplate);
+    size_t bytesRead = fread(templateBuffer, 1, filelength, fpTemplate);
 
     fclose(fpTemplate);
+
+    if (bytesRead < (size_t)filelength) {
+        printf(
+            "Expected to read %zu bytes from template file '%s', but got %zu bytes\n\n", 
+            (size_t)filelength, 
+            versionTemplateFile.c_str(), 
+            bytesRead);
+        throw std::exception();
+    }
 
     FILE * fpSource = fopen(versionSourceFile.c_str(), "wt");
 
