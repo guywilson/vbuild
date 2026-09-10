@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #include "cmdarg.h"
 #include "currenttime.h"
@@ -24,6 +25,7 @@ void printUsage() {
     std::cout << "Usage:" << std::endl << std::endl;
     std::cout << "vbuild <options>" << std::endl;
     std::cout << "\t-v - Print version number and exit" << std::endl;
+    std::cout << "\t-h - Print this help and exit" << std::endl;
     std::cout << "\t-i [incremental version file]" << std::endl;
     std::cout << "\t-t [template version source code file]" << std::endl;
     std::cout << "\t-o [version source code output]" << std::endl;
@@ -36,7 +38,23 @@ static uint32_t readIncrementalVersion(const std::string & filename) {
     FILE * fp = fopen(filename.c_str(), "rt");
 
     if (fp == NULL) {
-        std::cout << "Failed to open incremental version file '" << filename << "' for reading" << std::endl << std::endl;
+        if (errno == ENOENT) {
+            std::cout << "The incremental version file '" << filename << "' does not exist - creating..." << std::endl << std::endl;
+
+            fp = fopen(filename.c_str(), "wt");
+
+            if (fp == NULL) {
+                std::cout << "Failed to create incremental version file '" << filename << "' with: " << strerror(errno) << std::endl << std::endl;
+                throw std::exception();
+            }
+
+            fwrite("000", 1, 3, fp);
+            fclose(fp);
+
+            return 0U;
+        }
+
+        std::cout << "Failed to open incremental version file '" << filename << "' for reading with: " << strerror(errno) << std::endl << std::endl;
         throw std::exception();
     }
 
@@ -159,6 +177,10 @@ int main(int argc, char * argv[]) {
         }
         else if (arg == "-v") {
             std::cout << VBUILD_VERSION << std::endl << std::endl;
+            return 0;
+        }
+        else if (arg == "-h") {
+            printUsage();
             return 0;
         }
         else if (arg == "--pre-increment") {

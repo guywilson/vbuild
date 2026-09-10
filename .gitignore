@@ -1,4 +1,5 @@
 vbuild
+vbuild.1
 build/
 dep/
 .DS_Store
