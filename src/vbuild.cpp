@@ -124,12 +124,12 @@ static void writeVersionSourceFile(const std::string & versionTemplateFile, cons
 
     std::string timestamp = CurrentTime::getTimeStamp();
 
-    char versionString[256];
+    char versionString[32];
 
     snprintf(
         versionString, 
-        256, 
-        "%u.%u.%03u", 
+        32, 
+        "%u.%u.%u", 
         v.majorVersion, 
         v.minorVersion, 
         v.incrementalVersion);
